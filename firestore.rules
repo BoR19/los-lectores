@@ -1,0 +1,133 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: userId
+// Fields:
+//   - name: string (required)
+//   - address: string
+//   - meterId: string (required)
+//   - customerNumber: string (required)
+//   - phone: string
+//   - createdAt: timestamp
+//   - role: string (admin, reader, customer)
+//
+// Collection: readings
+// Document ID: readingId
+// Fields:
+//   - userId: string (required)
+//   - readerId: string
+//   - value: number (required)
+//   - imageUrl: string
+//   - date: timestamp (required)
+//   - previousValue: number
+//   - consumption: number
+//
+// Collection: invoices
+// Document ID: invoiceId
+// Fields:
+//   - userId: string (required)
+//   - readingId: string
+//   - amount: number (required)
+//   - status: string (pending, paid)
+//   - date: timestamp (required)
+//   - dueDate: timestamp
+//   - consumption: number
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin') || 
+          (request.auth.token.email == "borbjo637@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+    
+    function isLecturador() {
+      return isAuthenticated() && 
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'lecturador') || 
+          isAdmin()
+        );
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.role in ['admin', 'lecturador', 'user'] &&
+             (!('meterId' in data) || data.meterId is string) &&
+             (!('customerNumber' in data) || data.customerNumber is string) &&
+             (!('username' in data) || (data.username is string && data.username.size() < 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() < 100)) &&
+             (!('lastReadingValue' in data) || (data.lastReadingValue is number)) &&
+             (!('lastReadingDate' in data) || (data.lastReadingDate is string));
+    }
+
+    function isValidReading(data) {
+      return data.userId is string && 
+             data.value is number && data.value >= 0 &&
+             data.date is timestamp;
+    }
+
+    function isValidInvoice(data) {
+      return data.userId is string && 
+             data.amount is number && data.amount >= 0 &&
+             data.status in ['pending', 'paid'] &&
+             data.date is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if (isAuthenticated() && (isOwner(userId) || isLecturador())) || !isAuthenticated();
+      // Allow public query for debt check
+      allow list: if request.query.limit <= 10 || (isAuthenticated() && isLecturador());
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role));
+      allow delete: if isAdmin();
+    }
+
+    match /readings/{readingId} {
+      allow read: if isAuthenticated() && (isLecturador() || isOwner(resource.data.userId));
+      allow list: if isAuthenticated() && (isLecturador() || (resource.data.userId == request.auth.uid));
+      allow create: if isAuthenticated() && isLecturador() && isValidReading(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if (isAuthenticated() && (isLecturador() || isOwner(resource.data.userId))) || !isAuthenticated();
+      // Allow public list for debt check. 
+      allow list: if (isAuthenticated() && (isLecturador() || resource.data.userId == request.auth.uid)) || (!isAuthenticated() && (request.query.limit == null || request.query.limit <= 50));
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

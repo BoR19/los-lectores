@@ -1,0 +1,7 @@
+{
+  "name": "AquaRead - Gestión de Agua Comunitaria",
+  "description": "Sistema integral para la lectura de medidores mediante OCR, facturación automatizada y gestión de usuarios para comunidades de agua.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

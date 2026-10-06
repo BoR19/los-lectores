@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A customer of the water community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "meterId": { "type": "string" },
+        "customerNumber": { "type": "string" },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["admin", "reader", "customer"] }
+      },
+      "required": ["name", "meterId", "customerNumber", "role"]
+    },
+    "Reading": {
+      "title": "Reading",
+      "description": "A meter reading for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "readerId": { "type": "string" },
+        "value": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "previousValue": { "type": "number" },
+        "consumption": { "type": "number" }
+      },
+      "required": ["userId", "value", "date"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "A billing record for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "readingId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid"] },
+        "date": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "consumption": { "type": "number" }
+      },
+      "required": ["userId", "amount", "status", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and customer data"
+    },
+    "/readings/{readingId}": {
+      "schema": "Reading",
+      "description": "Meter readings history"
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Billing and payment records"
+    }
+  }
+}

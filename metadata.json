@@ -3,5 +3,6 @@
   "description": "Sistema integral para la lectura de medidores mediante OCR, facturación automatizada y gestión de usuarios para comunidades de agua.",
   "requestFramePermissions": [
     "camera"
-  ]
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
